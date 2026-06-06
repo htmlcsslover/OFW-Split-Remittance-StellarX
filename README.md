@@ -1,134 +1,71 @@
-# StellarX Workshop Starter
+# OFW Guardian: Split & Save
 
-A ready-to-run scaffold for the **StellarX PH workshop @ PUP QC**. It gives you a
-working Stellar app on **testnet** so you can spend the workshop bending it toward
-your own idea instead of fighting setup.
+**Empowering Overseas Filipino Workers with conditional remittances, automated split payments, and smart savings targets on Stellar.**
 
-It covers **both** workshop tracks:
+---
 
-- **Fullstack payments** — a Next.js app: connect Freighter → fund via Friendbot →
-  view XLM/USDC balances → send a payment → confirm on-chain.
-- **Soroban smart contract** — a small Rust contract (a *Savings Goal* tracker)
-  you build, test, deploy with the Stellar CLI, and call from the same frontend.
+## 🚀 One-Line Description
+A decentralized remittance management platform that allows OFWs to lock funds for guardians and automate distribution to multiple family members using Stellar Claimable Balances and Soroban Smart Contracts.
 
-```
-.
-├── web/                      # Next.js 16 + TypeScript + Tailwind frontend
-├── contracts/savings-goal/   # Rust Soroban contract (init / contribute / get_state)
-├── scripts/                  # deploy.ps1 (Windows) / deploy.sh
-├── Cargo.toml                # Rust workspace
-└── CLAUDE.md                 # stack notes + Stellar gotchas (read this!)
-```
+## 😟 The Problem
+Overseas Filipino Workers (OFWs) contribute significantly to the Philippine economy, yet they face three major challenges with traditional remittances:
+1.  **Lack of Control:** Once money is sent, OFWs have little visibility or control over whether it is spent on intended essentials (tuition, bills) or saved for the future.
+2.  **Distribution Friction:** Sending small amounts to multiple family members (e.g., three children and a parent) incurs multiple transaction fees and requires significant manual effort.
+3.  **Savings Leakage:** Without a dedicated, transparent mechanism, "extra" money is often consumed by daily expenses rather than being funneled into long-term savings goals.
 
-## Prerequisites
+## 🛠 How It Works
+OFW Guardian provides a structured workflow for family-centric financial management:
 
-From the [workshop setup checklist](https://stellar-pup-qc-may-2026-checklist.vercel.app/):
+1.  **Family Registration:** The OFW (Host) registers the Stellar public keys of a Guardian (Parent) and multiple Recipients (Children).
+2.  **Conditional Lock (Host):** The OFW creates a **Claimable Balance** on Stellar, locking XLM/USDC until a specific date (e.g., the 1st of next month).
+3.  **Autonomous Split (Guardian):** Once the time-lock expires, the Guardian claims the balance. The application immediately builds an **Atomic Split Transaction** that distributes the funds across all registered Recipient wallets in a single ledger entry.
+4.  **Savings Goal (Soroban):** A dedicated smart contract allows the family to contribute "leftovers" to a shared savings target, providing a transparent dashboard of their progress toward goals like a "Home Fund" or "Education Fund."
 
-- **Node.js 20+** and **npm** — for the frontend.
-- **Freighter** browser extension — create a wallet, switch it to **Test Net**.
-- For the contract track: **Rust**, the `wasm32v1-none` target, and the **Stellar CLI**.
+## 🌟 How It Uses Stellar
+This project leverages the unique "Lego bricks" of the Stellar ecosystem to ensure security and efficiency:
 
-You can run the **payments demo with just Node + Freighter** — Rust/CLI are only
-needed to deploy the Soroban contract.
+*   **Claimable Balances & Predicates:** Uses `Claimant.predicateNot(Claimant.predicateBeforeAbsoluteTime)` to enforce non-custodial time-locks, ensuring funds are reserved for family needs.
+*   **Atomic Multi-Operation Transactions:** Bundles up to 100 individual payments into a single transaction. This ensures that if the Guardian claims the funds, the split to the children happens instantly and atomically, or not at all.
+*   **Soroban Smart Contracts:** The `SavingsGoal` contract manages global state for family savings, utilizing Soroban's efficient `instance` storage and TTL management.
+*   **Non-Custodial Security:** All transactions are signed via **Freighter**, ensuring the OFW and Guardian maintain full control of their private keys.
 
-### Install the contract toolchain (Windows)
+## 🎯 Track
+**Track 1 – Remittance & Cross-Border**
 
-Install Rust and the Stellar CLI:
+## 💻 Tech Stack
+*   **Frontend:** Next.js 15, TypeScript, Tailwind CSS
+*   **Blockchain SDK:** `@stellar/stellar-sdk`
+*   **Wallet:** `@stellar/freighter-api`
+*   **Smart Contracts:** Soroban (Rust SDK)
+*   **Indexing/UI:** Stellar.expert integration
 
-```powershell
-winget install --id Rustlang.Rustup -e --accept-source-agreements --accept-package-agreements
-winget install --id Stellar.StellarCLI -e --accept-source-agreements --accept-package-agreements
-```
+## ⚙️ Setup & Run
 
-Then **open a new terminal** (so `cargo`/`stellar` land on PATH) and give Rust a
-working linker — pick one:
-
-**Easiest — GNU toolchain** (no admin, no large download):
-
-```powershell
-rustup default stable-x86_64-pc-windows-gnu
-rustup target add wasm32v1-none
+### 1. Smart Contract
+```bash
+cd contracts/savings-goal
+cargo build --target wasm32-unknown-unknown --release
+# Deploy using the provided scripts in /scripts
 ```
 
-**Or MSVC** (matches Stellar's docs): install the **Visual C++ Build Tools** (the
-"Desktop development with C++" workload), then:
-
-```powershell
-rustup target add wasm32v1-none
-```
-
-> If `cargo` fails with *"linker `link.exe` not found"*, you skipped the step
-> above — use the GNU toolchain or install the Build Tools.
-
-On macOS/Linux: install Rust from <https://rustup.rs>, run
-`rustup target add wasm32v1-none`, and install the Stellar CLI
-(`brew install stellar-cli`).
-
-## 1. Run the frontend (the part that demos immediately)
-
-```powershell
+### 2. Web Application
+```bash
 cd web
-npm install        # already run if you scaffolded via this repo
+npm install
 npm run dev
 ```
 
-Open <http://localhost:3000>, then:
+### 3. Environment Variables
+Create a `web/.env.local` (or similar) with:
+*   `NEXT_PUBLIC_NETWORK_PASSPHRASE`: "Test SDF Network ; September 2015"
+*   `NEXT_PUBLIC_HORIZON_URL`: "https://horizon-testnet.stellar.org"
 
-1. **Connect Freighter** (approve in the extension; make sure it's on Test Net).
-2. **Fund with Friendbot** — your XLM balance jumps to ~10,000.
-3. **Send a payment** to another *existing, funded* testnet account
-   (create one at <https://laboratory.stellar.org/#account-creator?network=test>).
-4. Watch the status go Building → Signing → Submitting → Confirming → Success,
-   then open the **Stellar Expert** link to see it on-chain.
+## 🌐 Network Details
+*   **Network:** Stellar Testnet
+*   **Asset:** Native XLM (with future support for PHP-stablecoins/USDC)
 
-`web/.env.local` is pre-filled with testnet config. `NEXT_PUBLIC_CONTRACT_ID` is
-left empty — the Savings Goal panel shows deploy instructions until you set it.
+## 👥 Team
+*   **Raphael** — [@htmlcsslover](https://github.com/htmlcsslover)
 
-## 2. Build, test & deploy the Soroban contract
-
-```powershell
-# from the repo root
-cargo test                 # runs the contract unit tests (no network needed)
-
-# deploy to testnet + auto-wire the contract ID into web/.env.local
-.\scripts\deploy.ps1       # macOS/Linux:  ./scripts/deploy.sh
-```
-
-The deploy script will: create+fund a testnet identity (if needed), run
-`stellar contract build`, deploy, initialise the goal (target `1000`), and write
-`NEXT_PUBLIC_CONTRACT_ID` into `web/.env.local`. **Restart `npm run dev`** and the
-**Savings Goal** panel goes live: it reads on-chain progress and lets a connected
-wallet `contribute` (a real signed Soroban transaction).
-
-### The contract (`contracts/savings-goal/src/lib.rs`)
-
-| Function | Purpose |
-|---|---|
-| `init(target: i128)` | Set the savings target (once). |
-| `contribute(amount: i128) -> i128` | Add to the saved total; returns the new total. |
-| `get_state() -> State` | Read `{ saved, target }`. |
-
-It uses plain integer state (no token transfers) so it's bulletproof in a live
-demo. To make it move real money, swap `contribute` to call the XLM/USDC SAC
-`transfer` and store per-user contributions — see CLAUDE.md for the SAC addresses.
-
-## 3. Make it your idea
-
-This is your *starting point*, not the answer. Pick an idea + track from the
-workshop's 300-ideas list (Philippines remittance / payments / financial
-inclusion themes score well), then reshape the components and the contract.
-Good extension paths: transaction history from Horizon, USDC trustline + send,
-a swap via Soroswap, a price feed via Reflector.
-
-For a fully worked example built on this scaffold, see the **Paluwagan** app in
-`..\Stellar-Workshop-PUP-May-2026-EXAMPLE`.
-
-## Troubleshooting
-
-- **Freighter "not detected"** — install it, reload the page, and confirm it's unlocked.
-- **Payment fails `op_no_destination`** — fund the destination account first.
-- **`tx_bad_auth`** — wrong network passphrase; this app uses `Networks.TESTNET`.
-- **Contract panel can't read state** — make sure you deployed *and* ran `init`,
-  and that `NEXT_PUBLIC_CONTRACT_ID` is set, then restart the dev server.
-
-See **CLAUDE.md** for the full list of Stellar gotchas.
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
